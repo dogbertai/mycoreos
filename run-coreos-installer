@@ -1,0 +1,15 @@
+#!/usr/bin/bash
+set -x
+main() {
+    ignition_file='/home/core/config.ign'
+    install_device='/dev/sda'
+    cmd="coreos-installer install ${install_device} --ignition-file ${ignition_file}"
+    if $cmd; then
+        echo "Install Succeeded!"
+        return 0
+    else
+        echo "Install Failed!"
+        return 1
+    fi
+}
+main
