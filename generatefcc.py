@@ -55,7 +55,7 @@ def add_hostname(files, name):
         'path': '/etc/hostname',
         'mode': 0o644,
         'contents': {
-            'inline': name
+            'inline': name.lower()
         }
     })
 

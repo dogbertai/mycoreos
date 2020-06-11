@@ -1,16 +1,22 @@
 
+param (
+    ${VMName} = 'CoreOS',
+    ${Switch} = 'External Switch',
+    ${InstallMedia} = "C:\Users\dogbe\Downloads\fedora-coreos-31.20200517.3.0-live.x86_64.iso"
+)
 function New-EmbedMedia {
     param (
         ${VMName},
         ${InstallMedia}
     )
-    venv\Scripts\python.exe generatefcc.py ${VMName}
-    docker run --rm -v ${PWD}:/work quay.io/coreos/fcct:release --pretty --strict -o /work/mycoreos.ign /work/mycoreos.fcc
-    venv\Scripts\python.exe generatebootstrap.py
-    docker run --rm -v ${PWD}:/work quay.io/coreos/fcct:release --pretty --strict -o /work/bootstrap.ign /work/bootstrap.fcc
-    ${EmbedMedia} = "${PWD}\fedora-coreos-embed.iso"
+    New-Item -Path "${PWD}" -Name "out" -ItemType "directory"
+    venv\Scripts\python.exe generatefcc.py ${VMName} --outfile out\mycoreos.fcc
+    docker run --rm -v "${PWD}/out:/work" quay.io/coreos/fcct:release --pretty --strict -o /work/mycoreos.ign /work/mycoreos.fcc
+    venv\Scripts\python.exe generatebootstrap.py --config out\mycoreos.ign --outfile out\bootstrap.fcc
+    docker run --rm -v "${PWD}/out:/work" quay.io/coreos/fcct:release --pretty --strict -o /work/bootstrap.ign /work/bootstrap.fcc
+    ${EmbedMedia} = "${PWD}\out\fedora-coreos-embed.iso"
     Copy-Item -Path ${InstallMedia} -Destination ${EmbedMedia} -Force
-    docker run --rm -v ${PWD}:/work quay.io/coreos/coreos-installer:release iso embed --config /work/bootstrap.ign --force /work/fedora-coreos-embed.iso
+    docker run --rm -v "${PWD}/out:/work" quay.io/coreos/coreos-installer:release iso embed --config /work/bootstrap.ign --force /work/fedora-coreos-embed.iso
     return ${EmbedMedia}
 }
 function New-NodeVM {
@@ -30,13 +36,10 @@ function Install-OSToHD {
     Start-VM -Name ${VMName}
     Start-Sleep 5
     ${VM} = Get-VM -Name ${VMName}
-    while(${VM}.State -eq 'Running') {
+    while (${VM}.State -eq 'Running') {
         Start-Sleep 5
     }
 }
-${VMName} = 'CoreOS'
-${Switch} = 'External Switch'
-${InstallMedia} = "C:\Users\dogbe\Downloads\fedora-coreos-31.20200505.3.0-live.x86_64.iso"
 ${EmbedMedia} = New-EmbedMedia -VMName ${VMName} -InstallMedia ${InstallMedia}
 New-NodeVM -VMName ${VMName} -Switch ${Switch} -InstallMedia ${EmbedMedia}
 Start-Sleep 5
